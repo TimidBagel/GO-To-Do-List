@@ -19,36 +19,63 @@ type Task struct {
 	Done        bool   `json:"done"`
 }
 
-func HelpHelp(){
-  fmt.Println("- 'help task' - displays 'task' command specific information")
-  fmt.Println("- 'help quit' - displays 'quit' command specific information")
+func HelpHelp() {
+	fmt.Println("- 'help task' - displays 'task' command specific information")
+	fmt.Println("- 'help quit' - displays 'quit' command specific information")
 }
 
 func TaskHelp(args ...string) error {
 	if len(args) != 2 {
-		return errors.New("Unexpected number of arguments")
+		return errors.New("unexpected number of arguments")
 	}
 
-	fmt.Println("- 'task new [name] [description] - initializes and saves a new task")
-	fmt.Println("- 'task edit [name] [new name] [new description] - edits the name and description of a task")
-	fmt.Println("- 'task del [name] - deletes given task")
-	fmt.Println("- 'task done [name] - marks a given task as completed")
+	fmt.Printf("--> %50s - %-30s\n", "'task new [name] [description]'", "initializes and saves a new task")
+	fmt.Printf("--> %50s - %-30s\n", "'task edit [name] [new name] [new description]'", "edits the name and description of a task")
+	fmt.Printf("--> %50s - %-30s\n", "'task del [name]'", "deletes given task")
+	fmt.Printf("--> %50s - %-30s\n", "'task done [name]'", "marks a given task as completed")
 
 	return nil
 }
 
 func QuitHelp(args ...string) error {
 	if len(args) != 2 {
-		return errors.New("Unexpected number of arguments")
+		return errors.New("unexpected number of arguments")
 	}
 
-	fmt.Println("- 'quit prog' - ends program with 0 exit code")
+	fmt.Println("- 'quit 0' - ends program with 0 exit code")
 	return nil
 }
 
 func NewTask(args ...string) error {
 	if len(args) != 4 {
-		return errors.New("Unexpected number of arguments")
+		return errors.New("unexpected number of arguments")
+	}
+
+	name := args[2]
+	desc := args[3]
+
+	path := "tasks/" + name + ".json"
+
+	_, err := os.Stat(path)
+
+	if os.IsExist(err) {
+		return errors.New("task name already exists")
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+
+	file, err := os.Create(path)
+
+	if err != nil {
+		return err
+	}
+
+	task := Task{name, desc, false}
+
+	err = Serialize(task, file)
+
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -56,7 +83,7 @@ func NewTask(args ...string) error {
 
 func EditTask(args ...string) error {
 	if len(args) != 5 {
-		return errors.New("Unexpected number of arguments")
+		return errors.New("unexpected number of arguments")
 	}
 
 	return nil
@@ -64,7 +91,7 @@ func EditTask(args ...string) error {
 
 func DeleteTask(args ...string) error {
 	if len(args) != 3 {
-		return errors.New()
+		return errors.New("unexpected number of arguments")
 	}
 
 	return nil
@@ -72,7 +99,7 @@ func DeleteTask(args ...string) error {
 
 func CompleteTask(args ...string) error {
 	if len(args) != 3 {
-		return errors.New()
+		return errors.New("unexpected number of arguments")
 	}
 
 	return nil
@@ -91,7 +118,7 @@ func main() {
 			"done": CompleteTask,
 		},
 		"quit": {
-			"prog": func(args ...string) error {
+			"0": func(args ...string) error {
 				os.Exit(0)
 				return nil
 			},
@@ -103,47 +130,54 @@ func main() {
 	for loop {
 		fmt.Print(">")
 		input := strings.Split(strings.ToLower(read.ReadLine()), " ")
+		fmt.Printf("Arguments: %v - %v\n", len(input), input)
 
-    if input[0] == "help"{
-      HelpHelp()
-      continue
-    }
-		if com, valid := commands[input[0]]; valid{
-      if len(input) > 1 && com[input[1]] != true{
-        fmt.Printf("- '%s' is not a valid command string.")
-        continue
-      }
-    }
+		if len(input) == 1 && input[0] == "help" {
+			HelpHelp()
+			continue
+		}
+		if com, valid := commands[input[0]]; valid {
+			if len(input) > 1 {
+				if com2, present := com[input[1]]; present {
+					result := com2(input...)
+					if result == nil {
+						continue
+					} else {
+						fmt.Printf("- Error: %v\n- *see 'help %s'* -\n", result, input[0])
+						continue
+					}
+				} else {
+					fmt.Printf("- Error: %v\n- *see 'help'* -\n", errors.New("unrecognized command string"))
+				}
+
+			} else {
+				fmt.Printf("- Error: %v\n- *see 'help'* -\n", errors.New("unrecognized command string"))
+			}
+		} else {
+			fmt.Printf("- Error: %v\n- *see 'help'* -\n", errors.New("unrecognized command string"))
+		}
+	}
 }
 
-func Serialize(tasks []Task) {
-	// converts task list to JSON bytes
-	jsonData, err := json.MarshalIndent(tasks, "", "   ")
+func Serialize(task Task, file *os.File) error {
+	// converts task to JSON bytes
+	jsonData, err := json.MarshalIndent(task, "", "   ")
 
 	if err != nil {
-		fmt.Println("Error serializing tasks:", err)
-		return
-	}
-
-	// creates a file
-	path := "tasks/tasks.json"
-	file, err := os.Create(path)
-
-	if err != nil {
-		fmt.Println("Error creating file:", err)
-		return
+		return err
 	}
 
 	// writes converted JSON to file
 	_, err = file.Write(jsonData)
 
 	if err != nil {
-		fmt.Println("Error writing to file:", err)
-		return
+		return err
 	}
 
 	// closes file
 	file.Close()
+
+	return nil
 }
 
 func Deserialize(path string) ([]Task, error) {
