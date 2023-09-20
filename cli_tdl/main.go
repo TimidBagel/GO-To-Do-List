@@ -20,59 +20,71 @@ type Task struct {
 	Done        bool   `json:"done"`
 }
 
-type User struct {
-	Name  string `json:"name"`
-	Tasks []Task `json:"tasks"`
-}
+var openCommands = []string{"help", "task", "quit"}
+var helpCommands = []string{"task"}
+var taskCommands = []string{"new", "edit", "del", "done"}
+
+var commads = make(map[string]map[string]string)
 
 func main() {
+	//var tasks []Task
+
 	loop := true
-	var user User
-
 	for loop {
-		fmt.Print("Enter your username >> ")
-		username := read.ReadLine()
+		fmt.Print("->")
+		input := (strings.Split(strings.ToLower(read.ReadLine()), " "))
 
-		// look for username in users folder
-		path := "users/" + username + ".json"
-		_, err := os.Stat(path)
+		switch input[0] {
+		case "help":
+			if len(input) > 1 {
+				switch input[1] {
+				case "task":
+					for _, val := range taskCommands {
+						fmt.Println(val, ": explanation")
+					}
 
-		if err == nil {
-			fmt.Println("\nHello,", username)
-			user, _ = Deserialize(path)
-		} else if os.IsNotExist(err) {
-
-			fmt.Printf("Path '%s' does not exist.\n", path)
-			fmt.Printf("Would you like to create a new user? (y/n) >> ")
-			response := strings.ToLower(read.ReadLine())
-			if response == "y" {
-
-			} else if response == "n" {
-
-			} else {
-
+				case "quit":
+					fmt.Println("Quit: exits the program.")
+				default:
+					fmt.Printf("'%s' is not a recognized command.\n", input[1])
+				}
 			}
-		} else {
 
-			fmt.Printf("Error checking path '%s': %v\n", path, err)
+		case "task":
+			if len(input) > 1 {
+				switch input[1] {
+				case "new":
+					// new
+				case "edit":
+					// edit
+				case "del":
+					// delete
+				case "done":
+					// done
+				default:
+					fmt.Printf("'%s' is not a recognized command.\n", input[1])
+				}
+			}
+
+		case "quit":
+			return
+		default:
+			fmt.Printf("'%s' is not a recognized command.\n", input[0])
 		}
 	}
-
-	// Saves work to json file specific to username
-	Serialize(user)
 }
 
-func Serialize(user User) {
-	// converts user struct to JSON bytes
-	jsonData, err := json.MarshalIndent(user, "", "   ")
+func Serialize(tasks []Task) {
+	// converts task list to JSON bytes
+	jsonData, err := json.MarshalIndent(tasks, "", "   ")
 
 	if err != nil {
-		fmt.Println("Error serializing user:", err)
+		fmt.Println("Error serializing tasks:", err)
 		return
 	}
 
 	// creates a file
-	path := "users/" + user.Name + ".json"
+	path := "tasks/tasks.json"
 	file, err := os.Create(path)
 
 	if err != nil {
@@ -92,8 +104,9 @@ func Serialize(user User) {
 	file.Close()
 }
 
-func Deserialize(path string) (User, error) {
-	var user User
+func Deserialize(path string) ([]Task, error) {
+
+	var tasks []Task
 
 	// reads file as bytes
 	jsonData, err := os.ReadFile(path)
@@ -101,25 +114,25 @@ func Deserialize(path string) (User, error) {
 	// handles error
 	if err != nil {
 		fmt.Printf("Error reading file '%s': %v\n", path, err)
-		return user, err
+		return tasks, err
 	}
 
 	valid := json.Valid(jsonData)
 
 	if !valid {
 		fmt.Println("yo json aint valid cheif!!1!")
-		return user, errors.New("invlaid JSON")
+		return tasks, errors.New("invlaid JSON")
 	}
 
-	// deserializes bytes, stored in user
-	err = json.Unmarshal(jsonData, &user)
+	// deserializes bytes, stored in task list
+	err = json.Unmarshal(jsonData, &tasks)
 
 	// handles error
 	if err != nil {
 		fmt.Println("Error deserializing file:", err)
-		return user, err
+		return tasks, err
 	}
 
-	// returns address of deserialized user
-	return user, err
+	// returns deserialized task list
+	return tasks, nil
 }
