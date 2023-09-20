@@ -19,9 +19,14 @@ type Task struct {
 	Done        bool   `json:"done"`
 }
 
-func TaskHelp(args ...string) bool {
+func HelpHelp(){
+  fmt.Println("- 'help task' - displays 'task' command specific information")
+  fmt.Println("- 'help quit' - displays 'quit' command specific information")
+}
+
+func TaskHelp(args ...string) error {
 	if len(args) != 2 {
-		return false
+		return errors.New("Unexpected number of arguments")
 	}
 
 	fmt.Println("- 'task new [name] [description] - initializes and saves a new task")
@@ -29,33 +34,52 @@ func TaskHelp(args ...string) bool {
 	fmt.Println("- 'task del [name] - deletes given task")
 	fmt.Println("- 'task done [name] - marks a given task as completed")
 
-	return true
+	return nil
 }
 
-func QuitHelp(args ...string) bool {
+func QuitHelp(args ...string) error {
+	if len(args) != 2 {
+		return errors.New("Unexpected number of arguments")
+	}
+
 	fmt.Println("- 'quit prog' - ends program with 0 exit code")
-	return true
+	return nil
 }
 
-func NewTask(args ...string) bool {
+func NewTask(args ...string) error {
+	if len(args) != 4 {
+		return errors.New("Unexpected number of arguments")
+	}
 
-	return true
+	return nil
 }
 
-func EditTask(args ...string) bool {
-	return true
+func EditTask(args ...string) error {
+	if len(args) != 5 {
+		return errors.New("Unexpected number of arguments")
+	}
+
+	return nil
 }
 
-func DeleteTask(args ...string) bool {
-	return true
+func DeleteTask(args ...string) error {
+	if len(args) != 3 {
+		return errors.New()
+	}
+
+	return nil
 }
 
-func CompleteTask(args ...string) bool {
-	return true
+func CompleteTask(args ...string) error {
+	if len(args) != 3 {
+		return errors.New()
+	}
+
+	return nil
 }
 
 func main() {
-	commands := map[string]map[string]func(args ...string) bool{
+	commands := map[string]map[string]func(args ...string) error{
 		"help": {
 			"task": TaskHelp,
 			"quit": QuitHelp,
@@ -67,9 +91,9 @@ func main() {
 			"done": CompleteTask,
 		},
 		"quit": {
-			"prog": func(args ...string) bool {
+			"prog": func(args ...string) error {
 				os.Exit(0)
-				return true
+				return nil
 			},
 		},
 	}
@@ -80,29 +104,16 @@ func main() {
 		fmt.Print(">")
 		input := strings.Split(strings.ToLower(read.ReadLine()), " ")
 
-		if com, valid := commands[input[0]]; valid {
-			if input[0] == "help" && len(input) < 2 {
-				fmt.Println("help task")
-				fmt.Println("help quit")
-			} else if len(input) > 1 {
-				if com2, valid := com[input[1]]; valid {
-					if input[0] == "help" || input[0] == "quit" {
-						com2()
-					} else if len(input) == 4 {
-						com2()
-					} else {
-						fmt.Printf("'%s' is invalid. See 'help task'.\n", strings.Join(input, " "))
-					}
-				} else {
-					fmt.Printf("'%s' is not a recognized command.\n", input[1])
-					continue
-				}
-			}
-		} else {
-			fmt.Printf("'%s' is not a recognized command.\n", input[0])
-			continue
-		}
-	}
+    if input[0] == "help"{
+      HelpHelp()
+      continue
+    }
+		if com, valid := commands[input[0]]; valid{
+      if len(input) > 1 && com[input[1]] != true{
+        fmt.Printf("- '%s' is not a valid command string.")
+        continue
+      }
+    }
 }
 
 func Serialize(tasks []Task) {
