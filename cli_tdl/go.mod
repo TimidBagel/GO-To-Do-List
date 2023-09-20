@@ -2,7 +2,8 @@ module tdl
 
 go 1.21.1
 
-replace iainmods.com/read => ./read
+replace read => ./read
 
-require iainmods.com/read v0.0.0-00010101000000-000000000000
-
+require (
+	read v0.0.0-00010101000000-000000000000
+)
