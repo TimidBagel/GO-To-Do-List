@@ -9,9 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"read"
 	"strings"
-
-	"read" // local module
 )
 
 type Task struct {
@@ -20,56 +19,88 @@ type Task struct {
 	Done        bool   `json:"done"`
 }
 
-var openCommands = []string{"help", "task", "quit"}
-var helpCommands = []string{"task"}
-var taskCommands = []string{"new", "edit", "del", "done"}
+func TaskHelp(args ...string) bool {
+	if len(args) != 2 {
+		return false
+	}
 
-var commads = make(map[string]map[string]string)
+	fmt.Println("- 'task new [name] [description] - initializes and saves a new task")
+	fmt.Println("- 'task edit [name] [new name] [new description] - edits the name and description of a task")
+	fmt.Println("- 'task del [name] - deletes given task")
+	fmt.Println("- 'task done [name] - marks a given task as completed")
+
+	return true
+}
+
+func QuitHelp(args ...string) bool {
+	fmt.Println("- 'quit prog' - ends program with 0 exit code")
+	return true
+}
+
+func NewTask(args ...string) bool {
+
+	return true
+}
+
+func EditTask(args ...string) bool {
+	return true
+}
+
+func DeleteTask(args ...string) bool {
+	return true
+}
+
+func CompleteTask(args ...string) bool {
+	return true
+}
 
 func main() {
-	//var tasks []Task
+	commands := map[string]map[string]func(args ...string) bool{
+		"help": {
+			"task": TaskHelp,
+			"quit": QuitHelp,
+		},
+		"task": {
+			"new":  NewTask,
+			"edit": EditTask,
+			"del":  DeleteTask,
+			"done": CompleteTask,
+		},
+		"quit": {
+			"prog": func(args ...string) bool {
+				os.Exit(0)
+				return true
+			},
+		},
+	}
 
 	loop := true
+
 	for loop {
-		fmt.Print("->")
-		input := (strings.Split(strings.ToLower(read.ReadLine()), " "))
+		fmt.Print(">")
+		input := strings.Split(strings.ToLower(read.ReadLine()), " ")
 
-		switch input[0] {
-		case "help":
-			if len(input) > 1 {
-				switch input[1] {
-				case "task":
-					for _, val := range taskCommands {
-						fmt.Println(val, ": explanation")
+		if com, valid := commands[input[0]]; valid {
+			if input[0] == "help" && len(input) < 2 {
+				fmt.Println("help task")
+				fmt.Println("help quit")
+			} else if len(input) > 1 {
+				if com2, valid := com[input[1]]; valid {
+					if input[0] == "help" || input[0] == "quit" {
+						com2()
+					} else if len(input) == 4 {
+						com2()
+					} else {
+						fmt.Printf("'%s' is invalid. See 'help task'.\n", strings.Join(input, " "))
 					}
-
-				case "quit":
-					fmt.Println("Quit: exits the program.")
-				default:
+				} else {
 					fmt.Printf("'%s' is not a recognized command.\n", input[1])
+					continue
 				}
 			}
-
-		case "task":
-			if len(input) > 1 {
-				switch input[1] {
-				case "new":
-					// new
-				case "edit":
-					// edit
-				case "del":
-					// delete
-				case "done":
-					// done
-				default:
-					fmt.Printf("'%s' is not a recognized command.\n", input[1])
-				}
-			}
-
-		case "quit":
-			return
-		default:
+		} else {
 			fmt.Printf("'%s' is not a recognized command.\n", input[0])
+			continue
 		}
 	}
 }
