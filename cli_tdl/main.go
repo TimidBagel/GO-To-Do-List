@@ -20,8 +20,8 @@ type Task struct {
 }
 
 func HelpHelp() {
-	fmt.Println("- 'help task' - displays 'task' command specific information")
-	fmt.Println("- 'help quit' - displays 'quit' command specific information")
+	fmt.Println("- 'help-task' - displays 'task' command specific information")
+	fmt.Println("- 'help-quit' - displays 'quit' command specific information")
 }
 
 func TaskHelp(args ...string) error {
@@ -30,10 +30,10 @@ func TaskHelp(args ...string) error {
 		return errors.New("unexpected number of arguments")
 	}
 
-	fmt.Printf("--> %50s - %-30s\n", "'task new [name] [description]'", "initializes and saves a new task")
-	fmt.Printf("--> %50s - %-30s\n", "'task edit [name] [new name] [new description]'", "edits the name and description of a task")
-	fmt.Printf("--> %50s - %-30s\n", "'task del [name]'", "deletes given task")
-	fmt.Printf("--> %50s - %-30s\n", "'task done [name]'", "marks a given task as completed")
+	fmt.Printf("--> %50s - %-30s\n", "'task-new-[name]-[description]'", "initializes and saves a new task")
+	fmt.Printf("--> %50s - %-30s\n", "'task-edit-[name]-[new name]-[new description]'", "edits the name and description of a task")
+	fmt.Printf("--> %50s - %-30s\n", "'task-del-[name]'", "deletes given task")
+	fmt.Printf("--> %50s - %-30s\n", "'task-done-[name]'", "marks a given task as completed")
 
 	// return nil error if success
 	return nil
@@ -45,7 +45,7 @@ func QuitHelp(args ...string) error {
 		return errors.New("unexpected number of arguments")
 	}
 
-	fmt.Println("- 'quit 0' - ends program with 0 exit code")
+	fmt.Println("- 'quit-0' - ends program with 0 exit code")
 
 	// return nil error if success
 	return nil
@@ -70,11 +70,9 @@ func NewTask(args ...string) error {
 	// check if path exists
 	_, err := os.Stat(path)
 
-	// if does exist, return error. if doesn't exist and error, return error.
-	if os.IsExist(err) {
-		return errors.New("task name already exists")
-	} else if !os.IsNotExist(err) {
-		return err
+	// if does exist, return error. if doesn't exist and error, return error
+	if err == nil{
+		return errors.New("task already exists")
 	}
 
 	// create file at path
@@ -113,10 +111,12 @@ func EditTask(args ...string) error {
 
 	_, err := os.Stat(path)
 
-	if os.IsNotExist(err) {
-		return errors.New("task not found")
-	} else if !os.IsExist(err) {
-		return err
+	if err != nil{
+		if os.IsNotExist(err) {
+			return errors.New("task not found")
+		} else{
+			return err
+		}
 	}
 
 	name := args[3]
@@ -124,7 +124,27 @@ func EditTask(args ...string) error {
 
 	task := Task{name, desc, false}
 
-	fmt.Print(task)
+	err = os.Remove(path)
+
+	if err != nil{
+		return err
+	}
+
+	path = "tasks/" + name + ".json"
+
+	file, err := os.Create(path)
+
+	if err != nil{
+		return err
+	}
+
+	defer file.Close()
+
+	err = Serialize(task, file)
+
+	if err != nil{
+		return err
+	}
 
 	// return nil error if success
 	return nil
@@ -172,9 +192,25 @@ func main() {
 
 	loop := true
 
+	/*
+
+	fmt.Println("testing edit...")
+	err := EditTask("task", "edit", "name", "things", "desc1")
+	if err != nil{
+		fmt.Printf("Error: %v\n", err)
+	}
+
+	fmt.Println("testing new...")
+	err = NewTask("task", "new", "name", "desc")
+	if err != nil{
+		fmt.Printf("Error: %v\n", err)
+	}
+
+	*/
+
 	for loop {
-		fmt.Print(">")
-		input := strings.Split(strings.ToLower(read.ReadLine()), " ")
+		fmt.Print("\n>")
+		input := strings.Split(strings.ToLower(read.ReadLine()), "-")
 		fmt.Printf("Arguments: %v - %v\n", len(input), input)
 
 		if len(input) == 1 && input[0] == "help" {
@@ -192,6 +228,7 @@ func main() {
 						continue
 					}
 				} else {
+					fmt.Printf("- Error: %v\n- *see 'help'* -\n", errors.New("unrecognized command string"))
 				}
 
 			} else {
