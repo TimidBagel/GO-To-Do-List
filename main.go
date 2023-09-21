@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"read"
+	"strconv"
 	"strings"
 )
 
@@ -30,10 +31,11 @@ func TaskHelp(args ...string) error {
 		return errors.New("unexpected number of arguments")
 	}
 
-	fmt.Printf("--> %-50s - %-30s\n", "'task-new-[name]-[description]'", "initializes and saves a new task")
-	fmt.Printf("--> %-50s - %-30s\n", "'task-edit-[name]-[new name]-[new description]'", "edits the name and description of a task")
-	fmt.Printf("--> %-50s - %-30s\n", "'task-del-[name]'", "deletes given task")
-	fmt.Printf("--> %-50s - %-30s\n", "'task-done-[name]'", "marks a given task as completed")
+	fmt.Printf("--> %-48s - %-30s\n", "'task-new-[name]-[description]'", "initializes and saves a new task")
+	fmt.Printf("--> %-48s - %-30s\n", "'task-edit-[name]-[new name]-[new description]'", "edits the name and description of a task")
+	fmt.Printf("--> %-48s - %-30s\n", "'task-view'", "prints all tasks in task directory")
+	fmt.Printf("--> %-48s - %-30s\n", "'task-del-[name]'", "deletes given task")
+	fmt.Printf("--> %-48s - %-30s\n", "'task-done-[name]'", "marks a given task as completed")
 
 	// return nil error if success
 	return nil
@@ -131,10 +133,56 @@ func EditTask(args ...string) error {
 	return nil
 }
 
+func ViewTasks(args ...string) error {
+	// checks if correct number of arguments passed
+	if len(args) != 2 {
+		return errors.New("unexpected number of arguments")
+	}
+
+	path := "tasks/"
+
+	files, err := os.ReadDir(path)
+
+	if err != nil {
+		return err
+	}
+
+	var output string
+
+	for _, file := range files {
+		task, err := Deserialize(path + file.Name())
+
+		if err != nil {
+			return err
+		}
+
+		output += "\n" + task.Name + " - Done: " + strconv.FormatBool(task.Done) + "\n\t" + task.Description
+	}
+
+	fmt.Println(output)
+
+	// return nil error if success
+	return nil
+}
+
 func DeleteTask(args ...string) error {
 	// checks if correct number of arguments are passed
 	if len(args) != 3 {
 		return errors.New("unexpected number of arguments")
+	}
+
+	path := "tasks/" + args[2] + ".json"
+
+	_, err := os.Stat(path)
+
+	if err != nil {
+		return err
+	}
+
+	err = os.Remove(path)
+
+	if err != nil {
+		return err
 	}
 
 	// return nil error if success
@@ -145,6 +193,22 @@ func CompleteTask(args ...string) error {
 	// checks if correct number of arguments are passed
 	if len(args) != 3 {
 		return errors.New("unexpected number of arguments")
+	}
+
+	path := "tasks/" + args[2] + ".json"
+
+	task, err := Deserialize(path)
+
+	if err != nil {
+		return err
+	}
+
+	task.Done = true
+
+	err = Serialize(task, path)
+
+	if err != nil {
+		return err
 	}
 
 	// return nil error if success
@@ -160,6 +224,7 @@ func main() {
 		"task": {
 			"new":  NewTask,
 			"edit": EditTask,
+			"view": ViewTasks,
 			"del":  DeleteTask,
 			"done": CompleteTask,
 		},
@@ -173,31 +238,17 @@ func main() {
 
 	loop := true
 
-	/*
-
-		fmt.Println("testing edit...")
-		err := EditTask("task", "edit", "name", "things", "desc1")
-		if err != nil{
-			fmt.Printf("Error: %v\n", err)
-		}
-
-		fmt.Println("testing new...")
-		err = NewTask("task", "new", "name", "desc")
-		if err != nil{
-			fmt.Printf("Error: %v\n", err)
-		}
-
-	*/
+	test()
 
 	for loop {
 		fmt.Print("\n>")
 		input := strings.Split(strings.ToLower(read.ReadLine()), "-")
-		fmt.Printf("Arguments: %v - %v\n", len(input), input)
 
 		if len(input) == 1 && input[0] == "help" {
 			HelpHelp()
 			continue
 		}
+
 		if com, valid := commands[input[0]]; valid {
 			if len(input) > 1 {
 				if com2, present := com[input[1]]; present {
@@ -211,7 +262,6 @@ func main() {
 				} else {
 					fmt.Printf("- Error: %v\n- *see 'help'* -\n", errors.New("unrecognized command string"))
 				}
-
 			} else {
 				fmt.Printf("- Error: %v\n- *see 'help'* -\n", errors.New("unrecognized command string"))
 			}
@@ -219,6 +269,65 @@ func main() {
 			fmt.Printf("- Error: %v\n- *see 'help'* -\n", errors.New("unrecognized command string"))
 		}
 	}
+}
+
+func test() {
+	files, err := os.ReadDir("tasks/")
+
+	if err != nil {
+		fmt.Println("Error: could not read 'tasks/' directory")
+		return
+	}
+
+	for _, file := range files {
+		path := "tasks/" + file.Name()
+		err = os.Remove(path)
+
+		if err != nil {
+			fmt.Println("Error: could not remove file" + file.Name())
+			return
+		}
+	}
+
+	fmt.Println("Expect nil error...")
+	err = NewTask("", "", "name", "descr")
+	fmt.Println("Error:", err)
+
+	fmt.Println("\nExpect nil error...")
+	err = NewTask("", "", "second name", "descr")
+	fmt.Println("Error:", err)
+
+	fmt.Println("\nExpect nil error...")
+	err = NewTask("", "", "third name", "descr")
+	fmt.Println("Error:", err)
+
+	fmt.Println("\nExpect task exists error...")
+	err = NewTask("", "", "name", "desc")
+	fmt.Println("Error:", err)
+
+	fmt.Println("\nExpect nil error...")
+	err = EditTask("", "", "name", "new name", "new descr")
+	fmt.Println("Error:", err)
+
+	fmt.Println("\nExpect task not found error...")
+	err = EditTask("", "", "name", "bad name", "descr")
+	fmt.Println("Error:", err)
+
+	fmt.Println("\nExpect nil error...")
+	err = CompleteTask("", "", "new name")
+	fmt.Println("Error:", err)
+
+	fmt.Println("\nExpect task not found error...")
+	err = CompleteTask("", "", "no name")
+	fmt.Println("Error:", err)
+
+	fmt.Println("\nExpect nil error...")
+	err = DeleteTask("", "", "second name")
+	fmt.Println("Error:", err)
+
+	fmt.Println("\nExpect new name, new descr, true, third name, descr, false output...")
+	err = ViewTasks("", "")
+	fmt.Println("Error:", err)
 }
 
 // Serializes a Task struct into JSON, then writes that JSON byte array to a file. Takes
@@ -256,6 +365,12 @@ func Serialize(task Task, path string) error {
 func Deserialize(path string) (Task, error) {
 
 	var task Task
+
+	_, err := os.Stat(path)
+
+	if err != nil {
+		return task, err
+	}
 
 	// reads file as bytes
 	jsonData, err := os.ReadFile(path)
