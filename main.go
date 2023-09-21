@@ -30,10 +30,10 @@ func TaskHelp(args ...string) error {
 		return errors.New("unexpected number of arguments")
 	}
 
-	fmt.Printf("--> %50s - %-30s\n", "'task-new-[name]-[description]'", "initializes and saves a new task")
-	fmt.Printf("--> %50s - %-30s\n", "'task-edit-[name]-[new name]-[new description]'", "edits the name and description of a task")
-	fmt.Printf("--> %50s - %-30s\n", "'task-del-[name]'", "deletes given task")
-	fmt.Printf("--> %50s - %-30s\n", "'task-done-[name]'", "marks a given task as completed")
+	fmt.Printf("--> %-50s - %-30s\n", "'task-new-[name]-[description]'", "initializes and saves a new task")
+	fmt.Printf("--> %-50s - %-30s\n", "'task-edit-[name]-[new name]-[new description]'", "edits the name and description of a task")
+	fmt.Printf("--> %-50s - %-30s\n", "'task-del-[name]'", "deletes given task")
+	fmt.Printf("--> %-50s - %-30s\n", "'task-done-[name]'", "marks a given task as completed")
 
 	// return nil error if success
 	return nil
@@ -71,26 +71,15 @@ func NewTask(args ...string) error {
 	_, err := os.Stat(path)
 
 	// if does exist, return error. if doesn't exist and error, return error
-	if err == nil{
+	if err == nil {
 		return errors.New("task already exists")
 	}
-
-	// create file at path
-	file, err := os.Create(path)
-
-	// return error if failed
-	if err != nil {
-		return err
-	}
-
-	// closes file after completion
-	defer file.Close()
 
 	// initialize new task
 	task := Task{name, desc, false}
 
 	// convert task to JSON, write JSON to task file
-	err = Serialize(task, file)
+	err = Serialize(task, path)
 
 	// return error if failed
 	if err != nil {
@@ -111,10 +100,10 @@ func EditTask(args ...string) error {
 
 	_, err := os.Stat(path)
 
-	if err != nil{
+	if err != nil {
 		if os.IsNotExist(err) {
 			return errors.New("task not found")
-		} else{
+		} else {
 			return err
 		}
 	}
@@ -126,23 +115,15 @@ func EditTask(args ...string) error {
 
 	err = os.Remove(path)
 
-	if err != nil{
+	if err != nil {
 		return err
 	}
 
 	path = "tasks/" + name + ".json"
 
-	file, err := os.Create(path)
+	err = Serialize(task, path)
 
-	if err != nil{
-		return err
-	}
-
-	defer file.Close()
-
-	err = Serialize(task, file)
-
-	if err != nil{
+	if err != nil {
 		return err
 	}
 
@@ -194,17 +175,17 @@ func main() {
 
 	/*
 
-	fmt.Println("testing edit...")
-	err := EditTask("task", "edit", "name", "things", "desc1")
-	if err != nil{
-		fmt.Printf("Error: %v\n", err)
-	}
+		fmt.Println("testing edit...")
+		err := EditTask("task", "edit", "name", "things", "desc1")
+		if err != nil{
+			fmt.Printf("Error: %v\n", err)
+		}
 
-	fmt.Println("testing new...")
-	err = NewTask("task", "new", "name", "desc")
-	if err != nil{
-		fmt.Printf("Error: %v\n", err)
-	}
+		fmt.Println("testing new...")
+		err = NewTask("task", "new", "name", "desc")
+		if err != nil{
+			fmt.Printf("Error: %v\n", err)
+		}
 
 	*/
 
@@ -243,9 +224,15 @@ func main() {
 // Serializes a Task struct into JSON, then writes that JSON byte array to a file. Takes
 // two parameters, the Task struct, and type *os.File.
 // Returns an error message or nil.
-func Serialize(task Task, file *os.File) error {
+func Serialize(task Task, path string) error {
 	// converts task to JSON bytes
 	jsonData, err := json.MarshalIndent(task, "", "   ")
+
+	if err != nil {
+		return err
+	}
+
+	file, err := os.Create(path)
 
 	if err != nil {
 		return err
