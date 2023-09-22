@@ -1,8 +1,11 @@
-package main
-
 /*
-	WORK ON ERROR HANDLING!!!!!!!
+File: main.go
+Author: Iain Broomell
+A console application, functions like a CLI.
+Start by entering 'help' to see available commands.
 */
+
+package main
 
 import (
 	"encoding/json"
@@ -14,17 +17,20 @@ import (
 	"strings"
 )
 
+// Task struct, takes a name, description, and a true/false for whether its been completed.
 type Task struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Done        bool   `json:"done"`
 }
 
+// Displays available base commands
 func HelpHelp() {
 	fmt.Println("- 'help-task' - displays 'task' command specific information")
 	fmt.Println("- 'help-quit' - displays 'quit' command specific information")
 }
 
+// Displays task specific information
 func TaskHelp(args ...string) error {
 	// checks if correct number of arguments are passed
 	if len(args) != 2 {
@@ -41,6 +47,7 @@ func TaskHelp(args ...string) error {
 	return nil
 }
 
+// displays quit specific information
 func QuitHelp(args ...string) error {
 	// checks if correct number of arguments are passed
 	if len(args) != 2 {
@@ -69,7 +76,7 @@ func NewTask(args ...string) error {
 	// initialize path based on name
 	path := "tasks/" + name + ".json"
 
-	// check if path exists
+	// check if path exists, captures possible error
 	_, err := os.Stat(path)
 
 	// if does exist, return error. if doesn't exist and error, return error
@@ -80,10 +87,10 @@ func NewTask(args ...string) error {
 	// initialize new task
 	task := Task{name, desc, false}
 
-	// convert task to JSON, write JSON to task file
+	// convert task to JSON, write JSON to task file, captures possible error
 	err = Serialize(task, path)
 
-	// return error if failed
+	// if error, return error
 	if err != nil {
 		return err
 	}
@@ -92,16 +99,21 @@ func NewTask(args ...string) error {
 	return nil
 }
 
+// Takes three arguments: the file name, the new file name, and the new description. Reads old file, deletes old file,
+// then creates a new file and writes the new task object to that file
 func EditTask(args ...string) error {
 	// checks if correct number of arguments are passed
 	if len(args) != 5 {
 		return errors.New("unexpected number of arguments")
 	}
 
+	// specifies local task location
 	path := "tasks/" + args[2] + ".json"
 
+	// attempts to find task file, captures possible error
 	_, err := os.Stat(path)
 
+	// checks if task exists, if not or error returned, return error
 	if err != nil {
 		if os.IsNotExist(err) {
 			return errors.New("task not found")
@@ -110,21 +122,28 @@ func EditTask(args ...string) error {
 		}
 	}
 
+	// initializes new name and new description strings
 	name := args[3]
 	desc := args[4]
 
+	// initializes new task with new information
 	task := Task{name, desc, false}
 
+	// removes task file from directory, captures possible error
 	err = os.Remove(path)
 
+	// if error, return error
 	if err != nil {
 		return err
 	}
 
+	// specifies local task location
 	path = "tasks/" + name + ".json"
 
+	// serializes and writes task to file, captures possible error
 	err = Serialize(task, path)
 
+	// if error, return error
 	if err != nil {
 		return err
 	}
@@ -133,54 +152,70 @@ func EditTask(args ...string) error {
 	return nil
 }
 
+// Reads all task files in 'task/' directory, then prints them to the console
 func ViewTasks(args ...string) error {
 	// checks if correct number of arguments passed
 	if len(args) != 2 {
 		return errors.New("unexpected number of arguments")
 	}
 
+	// specifies local task directory
 	path := "tasks/"
 
+	// finds all files in task directory, captures possible error
 	files, err := os.ReadDir(path)
 
+	// if error, return error
 	if err != nil {
 		return err
 	}
 
+	// initialize output string
 	var output string
 
+	// loop through files in task directory
 	for _, file := range files {
+		// deserialize task object and capture possible error
 		task, err := Deserialize(path + file.Name())
 
+		// if error, return error
 		if err != nil {
 			return err
 		}
 
+		// append task information to output string
 		output += "\n" + task.Name + " - Done: " + strconv.FormatBool(task.Done) + "\n\t" + task.Description
 	}
 
+	// print entire output string
 	fmt.Println(output)
 
 	// return nil error if success
 	return nil
 }
 
+// Takes one argument: the name of the task. Finds the task, then removes it.
 func DeleteTask(args ...string) error {
 	// checks if correct number of arguments are passed
 	if len(args) != 3 {
 		return errors.New("unexpected number of arguments")
 	}
 
+	// specifies local task location
 	path := "tasks/" + args[2] + ".json"
 
+	// attempts to find the task, captures possible error
 	_, err := os.Stat(path)
 
+	// if error, return error
 	if err != nil {
 		return err
 	}
 
+	// removes task file from directory, captures possible error
 	err = os.Remove(path)
 
+	// if error, return error
 	if err != nil {
 		return err
 	}
@@ -189,24 +224,32 @@ func DeleteTask(args ...string) error {
 	return nil
 }
 
+// Takes one argument: the name of the task. Finds the task, deserializes it, marks it as done,
+// then serializes it and writes the modified task to the same file
 func CompleteTask(args ...string) error {
 	// checks if correct number of arguments are passed
 	if len(args) != 3 {
 		return errors.New("unexpected number of arguments")
 	}
 
+	// specifies local task location
 	path := "tasks/" + args[2] + ".json"
 
+	// deserializes task, captures returned task and possible error
 	task, err := Deserialize(path)
 
+	// if error, return error
 	if err != nil {
 		return err
 	}
 
+	// set task as complete
 	task.Done = true
 
+	// serialize task and write to file, captures possible error
 	err = Serialize(task, path)
 
+	// if error, return error
 	if err != nil {
 		return err
 	}
@@ -216,6 +259,7 @@ func CompleteTask(args ...string) error {
 }
 
 func main() {
+	// nested dictionary of functions
 	commands := map[string]map[string]func(args ...string) error{
 		"help": {
 			"task": TaskHelp,
@@ -238,21 +282,28 @@ func main() {
 
 	loop := true
 
-	test()
-
+	// runtime loop
 	for loop {
 		fmt.Print("\n>")
+
+		// capture user input, set it to lowercase, and split it by the '-' character
 		input := strings.Split(strings.ToLower(read.ReadLine()), "-")
 
+		// if only input is 'help', display help information
 		if len(input) == 1 && input[0] == "help" {
 			HelpHelp()
 			continue
 		}
 
+		// chekcs if first argument is in first level of commands map
 		if com, valid := commands[input[0]]; valid {
+			// checks if there is more than one argument
 			if len(input) > 1 {
+				// checks if second argument is in second level of commands map
 				if com2, present := com[input[1]]; present {
+					// calls function on third level of commands map, captures possible error
 					result := com2(input...)
+					// if no error, do nothing. if error, print error, suggest help
 					if result == nil {
 						continue
 					} else {
@@ -271,78 +322,22 @@ func main() {
 	}
 }
 
-func test() {
-	files, err := os.ReadDir("tasks/")
-
-	if err != nil {
-		fmt.Println("Error: could not read 'tasks/' directory")
-		return
-	}
-
-	for _, file := range files {
-		path := "tasks/" + file.Name()
-		err = os.Remove(path)
-
-		if err != nil {
-			fmt.Println("Error: could not remove file" + file.Name())
-			return
-		}
-	}
-
-	fmt.Println("Expect nil error...")
-	err = NewTask("", "", "name", "descr")
-	fmt.Println("Error:", err)
-
-	fmt.Println("\nExpect nil error...")
-	err = NewTask("", "", "second name", "descr")
-	fmt.Println("Error:", err)
-
-	fmt.Println("\nExpect nil error...")
-	err = NewTask("", "", "third name", "descr")
-	fmt.Println("Error:", err)
-
-	fmt.Println("\nExpect task exists error...")
-	err = NewTask("", "", "name", "desc")
-	fmt.Println("Error:", err)
-
-	fmt.Println("\nExpect nil error...")
-	err = EditTask("", "", "name", "new name", "new descr")
-	fmt.Println("Error:", err)
-
-	fmt.Println("\nExpect task not found error...")
-	err = EditTask("", "", "name", "bad name", "descr")
-	fmt.Println("Error:", err)
-
-	fmt.Println("\nExpect nil error...")
-	err = CompleteTask("", "", "new name")
-	fmt.Println("Error:", err)
-
-	fmt.Println("\nExpect task not found error...")
-	err = CompleteTask("", "", "no name")
-	fmt.Println("Error:", err)
-
-	fmt.Println("\nExpect nil error...")
-	err = DeleteTask("", "", "second name")
-	fmt.Println("Error:", err)
-
-	fmt.Println("\nExpect new name, new descr, true, third name, descr, false output...")
-	err = ViewTasks("", "")
-	fmt.Println("Error:", err)
-}
-
 // Serializes a Task struct into JSON, then writes that JSON byte array to a file. Takes
 // two parameters, the Task struct, and type *os.File.
 // Returns an error message or nil.
 func Serialize(task Task, path string) error {
-	// converts task to JSON bytes
+	// converts task to JSON bytes, captures byte array and possible error
 	jsonData, err := json.MarshalIndent(task, "", "   ")
 
+	// if error, return error
 	if err != nil {
 		return err
 	}
 
+	// creates new task file, captures file and possible error
 	file, err := os.Create(path)
 
+	// if error, return error
 	if err != nil {
 		return err
 	}
@@ -350,24 +345,28 @@ func Serialize(task Task, path string) error {
 	// closes file
 	defer file.Close()
 
-	// writes converted JSON to file
+	// writes converted JSON to file, captures possible error
 	_, err = file.Write(jsonData)
 
+	// if error, return error
 	if err != nil {
 		return err
 	}
 
+	// returns nil error if success
 	return nil
 }
 
 // Deserializes a given task file. Takes one parameter: the path of the file. Returns
 // a Task struct and an error, possibly nil.
 func Deserialize(path string) (Task, error) {
-
+	// initializes new empty task struct
 	var task Task
 
+	// attempts to find task file, captures possible error
 	_, err := os.Stat(path)
 
+	// if error, return empty task and error
 	if err != nil {
 		return task, err
 	}
@@ -375,7 +374,7 @@ func Deserialize(path string) (Task, error) {
 	// reads file as bytes
 	jsonData, err := os.ReadFile(path)
 
-	// handles error
+	// if error, return empty task and error
 	if err != nil {
 		return task, err
 	}
@@ -383,6 +382,7 @@ func Deserialize(path string) (Task, error) {
 	// checks if JSON is valid
 	valid := json.Valid(jsonData)
 
+	// if invalid, return empty task and error
 	if !valid {
 		fmt.Println("yo json aint valid cheif!!1!")
 		return task, errors.New("invlaid JSON")
@@ -391,7 +391,7 @@ func Deserialize(path string) (Task, error) {
 	// deserializes bytes, stored in task list
 	err = json.Unmarshal(jsonData, &task)
 
-	// handles error
+	// if error, return error
 	if err != nil {
 		return task, err
 	}
