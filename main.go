@@ -204,11 +204,14 @@ func DeleteTask(args ...string) error {
 	// specifies local task location
 	path := "tasks/" + args[2] + ".json"
 
-	// attempts to find the task, captures possible error
+	// if not found, return 'task not found', if error, return error
 	_, err := os.Stat(path)
 
 	// if error, return error
 	if err != nil {
+		if os.IsNotExist(err) {
+			return errors.New("task not found")
+		}
 		return err
 	}
 
@@ -366,8 +369,11 @@ func Deserialize(path string) (Task, error) {
 	// attempts to find task file, captures possible error
 	_, err := os.Stat(path)
 
-	// if error, return empty task and error
+	// if not found, return empty task and 'task not found', if error, return error
 	if err != nil {
+		if os.IsNotExist(err) {
+			return task, errors.New("task not found")
+		}
 		return task, err
 	}
 
